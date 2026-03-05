@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:convert';
@@ -7,6 +8,9 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'premium_bible_screen.dart';
 
 class BibleVersion {
   final String id;
@@ -42,25 +46,30 @@ class BibleApp extends StatelessWidget {
           return MaterialApp(
             title: 'የአማርኛ መጽሐፍ ቅዱስ',
             debugShowCheckedModeBanner: false,
-            themeMode: provider.themeMode,
+            themeMode: provider.themeMode, // Bind to Provider state
             theme: ThemeData(
               useMaterial3: true,
-              colorScheme: ColorScheme.fromSeed(
-                seedColor: Colors.deepPurple,
-                brightness: Brightness.light,
+              scaffoldBackgroundColor: const Color(0xFFF9F9FA), // Soft off-white
+              colorScheme: const ColorScheme.light(
+                primary: Color(0xFFD4AF37), // Axios Gold
+                surface: Colors.white,
+                onSurface: Color(0xFF2C2C2C),
+                surfaceContainerHighest: Color(0xFFF0F0F0),
               ),
               fontFamily: GoogleFonts.notoSansEthiopic().fontFamily,
-              scaffoldBackgroundColor: const Color(0xFFFAFAFA),
             ),
             darkTheme: ThemeData(
               useMaterial3: true,
-              colorScheme: ColorScheme.fromSeed(
-                seedColor: Colors.deepPurple,
-                brightness: Brightness.dark,
+              scaffoldBackgroundColor: const Color(0xFF121212), // Rich dark grey
+              colorScheme: const ColorScheme.dark(
+                primary: Color(0xFFD4AF37), // Axios Gold
+                surface: Color(0xFF1E1E1E),
+                onSurface: Colors.white,
+                surfaceContainerHighest: Color(0xFF2A2A2A),
               ),
               fontFamily: GoogleFonts.notoSansEthiopic().fontFamily,
             ),
-            home: const DashboardScreen(),
+            home: const PremiumBibleScreen(),
           );
         },
       ),
@@ -87,6 +96,7 @@ class BibleProvider extends ChangeNotifier {
     ),
   ];
   String _selectedVersionId = 'am_1954';
+  String? _parallelVersionId;
 
   String _selectedBook = '';
   int _selectedChapter = 1;
@@ -96,11 +106,39 @@ class BibleProvider extends ChangeNotifier {
   // Selection State
   final Set<String> _selectedVerses = {};
 
+  // Active Search State
+  String _activeSearchQuery = '';
+  String get activeSearchQuery => _activeSearchQuery;
+  void setActiveSearchQuery(String query) {
+    _activeSearchQuery = query;
+    notifyListeners();
+  }
+  void clearActiveSearchQuery() {
+    _activeSearchQuery = '';
+    notifyListeners();
+  }
+
   // Highlights State
   Map<String, int> _highlights = {};
 
   // Bookmarks State
   List<Map<String, dynamic>> _bookmarks = [];
+
+  // Daily Verses Curated List
+  final List<Map<String, String>> _dailyVerses = [
+    {'book': 'Psalms', 'chapter': '23', 'verse': '1'},
+    {'book': 'Jeremiah', 'chapter': '29', 'verse': '11'},
+    {'book': 'John', 'chapter': '3', 'verse': '16'},
+    {'book': 'Philippians', 'chapter': '4', 'verse': '13'},
+    {'book': 'Proverbs', 'chapter': '3', 'verse': '5'},
+    {'book': 'Isaiah', 'chapter': '41', 'verse': '10'},
+    {'book': 'Matthew', 'chapter': '11', 'verse': '28'},
+    {'book': 'Romans', 'chapter': '8', 'verse': '28'},
+  ];
+
+  // Journal Notes State
+  List<Map<String, dynamic>> _notes = [];
+  List<Map<String, dynamic>> get notes => _notes;
 
   // Settings State
   ThemeMode _themeMode = ThemeMode.system;
@@ -119,6 +157,10 @@ class BibleProvider extends ChangeNotifier {
   // Getters
   List<BibleVersion> get availableTranslations => _availableTranslations;
   BibleVersion get currentTranslation => _availableTranslations.firstWhere((v) => v.id == _selectedVersionId);
+  BibleVersion? get parallelTranslation {
+    if (_parallelVersionId == null) return null;
+    return _availableTranslations.firstWhere((v) => v.id == _parallelVersionId);
+  }
   bool get isAmharic => _selectedVersionId == 'am_1954';
   bool get isEnglish => _selectedVersionId != 'am_1954';
   String get currentLanguage => currentTranslation.name;
@@ -140,6 +182,29 @@ class BibleProvider extends ChangeNotifier {
   List<Map<String, dynamic>> get bookmarks => _bookmarks;
   ThemeMode get themeMode => _themeMode;
   double get fontSize => _fontSize;
+
+  Map<String, dynamic> _parallelBible = {};
+  Map<String, dynamic> get parallelBible => _parallelBible;
+
+  bool _isSplitScreen = false;
+  bool get isSplitScreen => _isSplitScreen;
+
+  void toggleSplitScreen() {
+    _isSplitScreen = !_isSplitScreen;
+    if (_isSplitScreen && _parallelVersionId == null) {
+      // Default secondary translation
+      _parallelVersionId = _selectedVersionId == 'am_1954' ? 'en_kjv' : 'am_1954';
+      loadTranslation(_parallelVersionId!, isParallel: true);
+    }
+    notifyListeners();
+  }
+
+  void setParallelVersion(String id) {
+    if (_parallelVersionId != id) {
+      _parallelVersionId = id;
+      loadTranslation(id, isParallel: true);
+    }
+  }
 
   void setThemeMode(ThemeMode mode) {
     if (_themeMode != mode) {
@@ -188,6 +253,57 @@ class BibleProvider extends ChangeNotifier {
       await file.writeAsString(json.encode(settings));
     } catch (e) {
       debugPrint("Error saving settings: $e");
+    }
+  }
+
+  // --- Journal Features ---
+  Future<void> _loadNotes() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final notesString = prefs.getString('journal_notes');
+      if (notesString != null) {
+        final List<dynamic> decoded = json.decode(notesString);
+        _notes = decoded.cast<Map<String, dynamic>>();
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint("Error loading notes: $e");
+    }
+  }
+
+  Future<void> _saveNotesToPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('journal_notes', json.encode(_notes));
+    } catch (e) {
+      debugPrint("Error saving notes: $e");
+    }
+  }
+
+  void saveNote({required String verseId, required String text, required String content, String category = "Personal"}) {
+    if (content.trim().isEmpty) return;
+    
+    _notes.insert(0, {
+      'reference': verseId, // Using verseId directly
+      'text': text,
+      'userNote': content,
+      'category': category,
+      'timestamp': DateTime.now().toIso8601String(),
+    });
+    
+    _saveNotesToPrefs();
+    notifyListeners();
+  }
+
+  bool hasNote(String verseId) {
+    return _notes.any((note) => note['reference'] == verseId);
+  }
+
+  void deleteNote(int index) {
+    if (index >= 0 && index < _notes.length) {
+      _notes.removeAt(index);
+      _saveNotesToPrefs();
+      notifyListeners();
     }
   }
 
@@ -330,8 +446,20 @@ class BibleProvider extends ChangeNotifier {
     }
 
     final String combinedText = textBuffer.toString().trim();
-    final verseRange = sortedVerses.join(',');
-    return '"$combinedText" — $_selectedBook $_selectedChapter:$verseRange (Bible)';
+    return combinedText;
+  }
+
+  String getSelectedReference() {
+    if (_selectedVerses.isEmpty) return '';
+
+    final sortedVerses = _selectedVerses.toList()
+      ..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
+      
+    final verseRange = sortedVerses.length == 1 
+        ? sortedVerses.first 
+        : '${sortedVerses.first}-${sortedVerses.last}';
+
+    return '$_selectedBook $_selectedChapter:$verseRange';
   }
 
   Future<File> _getLocalFile(String filename) async {
@@ -340,9 +468,11 @@ class BibleProvider extends ChangeNotifier {
   }
 
   /// Load a specific translation by ID
-  Future<void> loadTranslation(String id) async {
+  Future<void> loadTranslation(String id, {bool isParallel = false}) async {
     try {
-      _isLoading = true;
+      if (!isParallel) {
+        _isLoading = true;
+      }
       _error = null;
       notifyListeners();
 
@@ -350,10 +480,14 @@ class BibleProvider extends ChangeNotifier {
 
       // If already in memory
       if (version.data != null) {
-        // Change book appropriately using the index paradigm if book names differ
-        _handleTranslationSwitch(id);
+        if (isParallel) {
+          _parallelBible = version.data!;
+        } else {
+          // Change book appropriately using the index paradigm if book names differ
+          _handleTranslationSwitch(id);
+          _selectedVersionId = id;
+        }
         
-        _selectedVersionId = id;
         _isLoading = false;
         notifyListeners();
         return;
@@ -385,12 +519,16 @@ class BibleProvider extends ChangeNotifier {
       final rawData = json.decode(jsonBody);
       version.data = _transformBibleData(rawData);
       
-      _handleTranslationSwitch(id);
-      _selectedVersionId = id;
+      if (isParallel) {
+        _parallelBible = version.data!;
+      } else {
+        _handleTranslationSwitch(id);
+        _selectedVersionId = id;
 
-      if (_selectedBook.isEmpty && version.data!.isNotEmpty) {
-        _selectedBook = version.data!.keys.first;
-        _selectedChapter = 1;
+        if (_selectedBook.isEmpty && version.data!.isNotEmpty) {
+          _selectedBook = version.data!.keys.first;
+          _selectedChapter = 1;
+        }
       }
 
       _isLoading = false;
@@ -461,6 +599,7 @@ class BibleProvider extends ChangeNotifier {
 
   /// Select a book and reset chapter to 1
   void selectBook(String book) {
+    clearActiveSearchQuery();
     if (_selectedBook != book) {
       _selectedBook = book;
       _selectedChapter = 1; 
@@ -470,6 +609,7 @@ class BibleProvider extends ChangeNotifier {
 
   // Changes the chapter and tells the screen to update
   void selectChapter(int chapter) {
+    clearActiveSearchQuery();
     _selectedChapter = chapter;
     notifyListeners(); 
   }
@@ -596,8 +736,185 @@ class BibleProvider extends ChangeNotifier {
     );
   }
 
+  /// Get verses for the selected chapter in the secondary translation
+  Map<String, String> get parallelVerses {
+    if (_selectedBook.isEmpty || _parallelBible.isEmpty) return {};
+    
+    // We need to find the equivalent book name in the secondary translation
+    final primaryIndex = currentBible.keys.toList().indexOf(_selectedBook);
+    if (primaryIndex == -1) return {};
+    
+    final parallelBooks = _parallelBible.keys.toList();
+    if (primaryIndex >= parallelBooks.length) return {};
+    
+    final parallelBookName = parallelBooks[primaryIndex];
+    final book = _parallelBible[parallelBookName];
+    if (book == null) return {};
+    
+    // Using exact same fetching logic as primary verses
+    dynamic chapter;
+    if (book is List) {
+      int chapterNum = int.tryParse(_selectedChapter.toString()) ?? 1;
+      if (chapterNum < book.length && book[0] == null) {
+        chapter = book[chapterNum]; 
+      } else if (chapterNum - 1 >= 0 && chapterNum - 1 < book.length) {
+        chapter = book[chapterNum - 1];
+      }
+    } else if (book is Map) {
+      chapter = book[_selectedChapter.toString()] ?? book[int.tryParse(_selectedChapter.toString())];
+    }
+
+    if (chapter == null) return {};
+    
+    final Map<String, String> result = {};
+    if (chapter is List) {
+      for (int i = 0; i < chapter.length; i++) {
+        if (chapter[i] != null && chapter[i].toString().trim().isNotEmpty) {
+           int verseNum = chapter[0] == null ? i : (i + 1);
+           result[verseNum.toString()] = chapter[i].toString();
+        }
+      }
+    } else if (chapter is Map) {
+      chapter.forEach((key, value) {
+        if (value != null && value.toString().trim().isNotEmpty) {
+          result[key.toString()] = value.toString();
+        }
+      });
+    }
+    
+    final sortedKeys = result.keys.where((k) => int.tryParse(k) != null).toList()
+      ..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
+    
+    return Map.fromEntries(
+      sortedKeys.map((k) => MapEntry(k, result[k]!)),
+    );
+  }
+
   /// Get total verse count for selected chapter
   int get verseCount => verses.length;
+
+  Map<String, String> get verseOfTheDay {
+    if (currentBible.isEmpty) {
+      return {'reference': '...', 'text': 'Loading...', 'book': '', 'chapter': '', 'verse': ''};
+    }
+
+    final now = DateTime.now();
+    final seed = now.year * 10000 + now.month * 100 + now.day;
+    final random = Random(seed);
+    final verseRef = _dailyVerses[random.nextInt(_dailyVerses.length)];
+
+    String engBook = verseRef['book']!;
+    String chapter = verseRef['chapter']!;
+    String verse = verseRef['verse']!;
+
+    String actualJsonKey = engBook;
+    String displayBookName = engBook;
+
+    // If the current translation is Amharic, use the smart finder
+    if (currentTranslation.shortName == 'AM') { // Make sure this matches your Amharic shortName
+      final amharicSearchWords = {
+        'Psalms': 'መዝሙር',
+        'Jeremiah': 'ኤርምያስ',
+        'John': 'ዮሐንስ',
+        'Philippians': 'ፊልጵስዩስ',
+        'Proverbs': 'ምሳሌ',
+        'Isaiah': 'ኢሳይያስ',
+        'Matthew': 'ማቴዎስ',
+        'Romans': 'ሮሜ',
+      };
+
+      String targetWord = amharicSearchWords[engBook] ?? engBook;
+      
+      try {
+        // Scan the actual loaded JSON keys for the Amharic word
+        actualJsonKey = currentBible.keys.firstWhere((k) => k.contains(targetWord));
+        displayBookName = actualJsonKey; // Use the exact Amharic JSON key for display
+      } catch (e) {
+        actualJsonKey = engBook; // Fallback
+      }
+    }
+
+    // Fetch the text using the dynamically found key
+    String text = currentBible[actualJsonKey]?[chapter]?[verse] ?? 'Verse not found';
+
+    return {
+      'reference': '$displayBookName $chapter:$verse',
+      'text': text,
+      'book': actualJsonKey, // Pass the EXACT json key so onTap navigation works
+      'chapter': chapter,
+      'verse': verse
+    };
+  }
+
+  /// Search across all books, chapters, and verses.
+  List<Map<String, dynamic>> searchBible(String query) {
+    if (query.trim().isEmpty) return [];
+
+    final lowerQuery = query.toLowerCase();
+    final Map<String, dynamic> bible = currentBible;
+    final List<Map<String, dynamic>> results = [];
+
+    // Loop through books
+    for (String bookName in bible.keys) {
+      final bookData = bible[bookName];
+
+      // Get chapters
+      List<int> chaptersList = [];
+      if (bookData is Map) {
+        chaptersList = bookData.keys.map((k) => int.tryParse(k.toString()) ?? 1).toList()..sort();
+      } else if (bookData is List) {
+        chaptersList = List.generate(bookData.length, (i) => i + 1);
+      }
+
+      for (int chapterNum in chaptersList) {
+        dynamic chapter;
+        if (bookData is Map) {
+          chapter = bookData[chapterNum.toString()] ?? bookData[chapterNum];
+        } else if (bookData is List) {
+          if (chapterNum < bookData.length && bookData[0] == null) {
+            chapter = bookData[chapterNum];
+          } else if (chapterNum - 1 >= 0 && chapterNum - 1 < bookData.length) {
+            chapter = bookData[chapterNum - 1];
+          }
+        }
+
+        if (chapter == null) continue;
+
+        // Parse verses
+        if (chapter is Map) {
+          chapter.forEach((verseKey, verseValue) {
+            if (verseValue != null && verseValue.toString().trim().isNotEmpty) {
+              final text = verseValue.toString();
+              if (text.toLowerCase().contains(lowerQuery)) {
+                results.add({
+                  'book': bookName,
+                  'chapter': chapterNum.toString(),
+                  'verse': verseKey.toString(),
+                  'text': text,
+                });
+              }
+            }
+          });
+        } else if (chapter is List) {
+          for (int i = 0; i < chapter.length; i++) {
+            if (chapter[i] != null && chapter[i].toString().trim().isNotEmpty) {
+              int verseNum = chapter[0] == null ? i : (i + 1);
+              final text = chapter[i].toString();
+              if (text.toLowerCase().contains(lowerQuery)) {
+                results.add({
+                  'book': bookName,
+                  'chapter': chapterNum.toString(),
+                  'verse': verseNum.toString(),
+                  'text': text,
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+    return results;
+  }
 }
 
 class HomeScreen extends StatelessWidget {
@@ -944,6 +1261,79 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildHighlightedText(String text, String query, BuildContext context, BibleProvider provider) {
+    if (query.isEmpty) {
+      return Text(
+        text,
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              fontFamily: GoogleFonts.notoSansEthiopic().fontFamily,
+              fontSize: provider.fontSize,
+              height: 1.6,
+              letterSpacing: 0.2,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+      );
+    }
+
+    final String lowerText = text.toLowerCase();
+    final String lowerQuery = query.toLowerCase();
+    
+    List<TextSpan> spans = [];
+    int start = 0;
+    int indexOfMatch = lowerText.indexOf(lowerQuery, start);
+
+    if (indexOfMatch == -1) {
+      return Text(
+        text,
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              fontFamily: GoogleFonts.notoSansEthiopic().fontFamily,
+              fontSize: provider.fontSize,
+              height: 1.6,
+              letterSpacing: 0.2,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+      );
+    }
+
+    while (indexOfMatch != -1) {
+      // 1. Add normal text BEFORE the match
+      if (indexOfMatch > start) {
+        spans.add(TextSpan(text: text.substring(start, indexOfMatch)));
+      }
+      
+      // 2. Add the HIGHLIGHTED text
+      spans.add(TextSpan(
+        text: text.substring(indexOfMatch, indexOfMatch + query.length),
+        style: TextStyle(
+          backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.2), // The marker background
+          color: Theme.of(context).colorScheme.primary, // The bold gold text
+          fontWeight: FontWeight.bold,
+        ),
+      ));
+      
+      start = indexOfMatch + query.length;
+      indexOfMatch = lowerText.indexOf(lowerQuery, start);
+    }
+
+    // 3. Add any normal text remaining AFTER the last match
+    if (start < text.length) {
+      spans.add(TextSpan(text: text.substring(start)));
+    }
+
+    return RichText(
+      text: TextSpan(
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              fontFamily: GoogleFonts.notoSansEthiopic().fontFamily,
+              fontSize: provider.fontSize,
+              height: 1.6,
+              letterSpacing: 0.2,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+        children: spans,
+      ),
+    );
+  }
+
   Widget _buildVerseCard(BuildContext context, String verseNum, String verseText, BibleProvider provider) {
     final isSelected = provider.selectedVerses.contains(verseNum);
     final highlightColor = provider.getHighlightColor(verseNum);
@@ -981,15 +1371,19 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                    TextSpan(
-                      text: verseText,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            fontFamily: GoogleFonts.notoSansEthiopic().fontFamily,
-                            fontSize: provider.fontSize,
-                            height: 1.6,
-                            letterSpacing: 0.2,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
+                    WidgetSpan(
+                      child: provider.activeSearchQuery.isNotEmpty
+                          ? _buildHighlightedText(verseText, provider.activeSearchQuery, context, provider)
+                          : Text(
+                              verseText,
+                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                    fontFamily: GoogleFonts.notoSansEthiopic().fontFamily,
+                                    fontSize: provider.fontSize,
+                                    height: 1.6,
+                                    letterSpacing: 0.2,
+                                    color: Theme.of(context).colorScheme.onSurface,
+                                  ),
+                            ),
                     ),
                   ],
                 ),
@@ -1183,16 +1577,28 @@ class BibleSearchDelegate extends SearchDelegate<String?> {
   BibleSearchDelegate(this.provider);
 
   @override
+  ThemeData appBarTheme(BuildContext context) {
+    final theme = Theme.of(context);
+    return theme.copyWith(
+      appBarTheme: AppBarTheme(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        elevation: 0,
+      ),
+      inputDecorationTheme: const InputDecorationTheme(
+        border: InputBorder.none,
+      ),
+    );
+  }
+
+  @override
   List<Widget> buildActions(BuildContext context) {
     return [
-      if (query.isNotEmpty)
-        IconButton(
-          icon: const Icon(Icons.clear),
-          onPressed: () {
-            query = '';
-            showSuggestions(context);
-          },
-        ),
+      IconButton(
+        icon: const Icon(Icons.clear),
+        onPressed: () {
+          query = '';
+        },
+      ),
     ];
   }
 
@@ -1204,105 +1610,103 @@ class BibleSearchDelegate extends SearchDelegate<String?> {
     );
   }
 
+  Widget _buildHighlightedText(String text, String query, BuildContext context) {
+    if (query.isEmpty) {
+      return Text(text, style: TextStyle(color: Colors.grey[400]));
+    }
+
+    final String lowerText = text.toLowerCase();
+    final String lowerQuery = query.toLowerCase();
+    
+    List<TextSpan> spans = [];
+    int start = 0;
+    int indexOfMatch = lowerText.indexOf(lowerQuery, start);
+
+    if (indexOfMatch == -1) {
+      return Text(text, style: TextStyle(color: Colors.grey[400]));
+    }
+
+    while (indexOfMatch != -1) {
+      // 1. Add normal text BEFORE the match
+      if (indexOfMatch > start) {
+        spans.add(TextSpan(text: text.substring(start, indexOfMatch)));
+      }
+      
+      // 2. Add the HIGHLIGHTED text
+      spans.add(TextSpan(
+        text: text.substring(indexOfMatch, indexOfMatch + query.length),
+        style: TextStyle(
+          backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.2), // The marker background
+          color: Theme.of(context).colorScheme.primary, // The bold gold text
+          fontWeight: FontWeight.bold,
+        ),
+      ));
+      
+      start = indexOfMatch + query.length;
+      indexOfMatch = lowerText.indexOf(lowerQuery, start);
+    }
+
+    // 3. Add any normal text remaining AFTER the last match
+    if (start < text.length) {
+      spans.add(TextSpan(text: text.substring(start)));
+    }
+
+    return RichText(
+      text: TextSpan(
+        style: TextStyle(color: Colors.grey[400], height: 1.5), // Standard verse styling
+        children: spans,
+      ),
+    );
+  }
+
   @override
   Widget buildResults(BuildContext context) {
-    return _buildSearchResults();
+    return _buildSuggestionsOrResults(context);
   }
 
   @override
   Widget buildSuggestions(BuildContext context) {
-    return _buildSearchResults();
+    return _buildSuggestionsOrResults(context);
   }
 
-  Widget _buildSearchResults() {
+  Widget _buildSuggestionsOrResults(BuildContext context) {
     if (query.trim().isEmpty) {
-      return const Center(child: Text('Search the Bible...'));
+      return Container();
     }
 
-    final lowerQuery = query.toLowerCase();
-    final Map<String, dynamic> bible = provider.currentBible;
-    final List<Map<String, dynamic>> results = [];
-
-    // Loop through books
-    for (String bookName in bible.keys) {
-      final bookData = bible[bookName];
-
-      // Get chapters
-      List<int> chaptersList = [];
-      if (bookData is Map) {
-        chaptersList = bookData.keys.map((k) => int.tryParse(k.toString()) ?? 1).toList()..sort();
-      } else if (bookData is List) {
-        chaptersList = List.generate(bookData.length, (i) => i + 1);
-      }
-
-      for (int chapterNum in chaptersList) {
-        dynamic chapter;
-        if (bookData is Map) {
-          chapter = bookData[chapterNum.toString()] ?? bookData[chapterNum];
-        } else if (bookData is List) {
-          if (chapterNum < bookData.length && bookData[0] == null) {
-            chapter = bookData[chapterNum];
-          } else if (chapterNum - 1 >= 0 && chapterNum - 1 < bookData.length) {
-            chapter = bookData[chapterNum - 1];
-          }
-        }
-
-        if (chapter == null) continue;
-
-        // Parse verses
-        if (chapter is Map) {
-          chapter.forEach((verseKey, verseValue) {
-            if (verseValue != null && verseValue.toString().trim().isNotEmpty) {
-              final text = verseValue.toString();
-              if (text.toLowerCase().contains(lowerQuery) || bookName.toLowerCase().contains(lowerQuery)) {
-                results.add({
-                  'book': bookName,
-                  'chapter': chapterNum,
-                  'verse': verseKey.toString(),
-                  'text': text,
-                });
-              }
-            }
-          });
-        } else if (chapter is List) {
-          for (int i = 0; i < chapter.length; i++) {
-            if (chapter[i] != null && chapter[i].toString().trim().isNotEmpty) {
-              int verseNum = chapter[0] == null ? i : (i + 1);
-              final text = chapter[i].toString();
-              if (text.toLowerCase().contains(lowerQuery) || bookName.toLowerCase().contains(lowerQuery)) {
-                results.add({
-                  'book': bookName,
-                  'chapter': chapterNum,
-                  'verse': verseNum.toString(),
-                  'text': text,
-                });
-              }
-            }
-          }
-        }
-      }
-    }
+    final results = provider.searchBible(query);
 
     if (results.isEmpty) {
-      return const Center(child: Text('No matches found.'));
+      return const Center(child: Text("No results found."));
     }
 
     return ListView.builder(
       itemCount: results.length,
       itemBuilder: (context, index) {
-        final item = results[index];
-        return ListTile(
-          title: Text('${item['book']} ${item['chapter']}:${item['verse']}'),
-          subtitle: Text(
-            item['text'],
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+        final result = results[index];
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(12),
           ),
-          onTap: () {
-            provider.selectBook(item['book']);
-            provider.selectChapter(item['chapter']);
-            close(context, null);
-          },
+          child: ListTile(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            title: Text(
+              '${result['book']} ${result['chapter']}:${result['verse']}',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: _buildHighlightedText(result['text'], query, context),
+            ),
+            onTap: () {
+              provider.setActiveSearchQuery(query);
+              provider.selectBook(result['book'].toString());
+              provider.selectChapter(int.parse(result['chapter'].toString()));
+              close(context, null);
+            },
+          ),
         );
       },
     );
@@ -1340,9 +1744,9 @@ class SettingsDialog extends StatelessWidget {
                 const SizedBox(height: 12),
                 SegmentedButton<ThemeMode>(
                   style: SegmentedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    selectedBackgroundColor: Theme.of(context).colorScheme.primary,
-                    selectedForegroundColor: Theme.of(context).colorScheme.onPrimary,
+                    backgroundColor: const Color(0xFF1E1E1E), // Dark background
+                    selectedBackgroundColor: const Color(0xFFD4AF37), // Axios Gold
+                    selectedForegroundColor: Colors.black, // Dark text on gold for contrast
                   ),
                   segments: const [
                     ButtonSegment(value: ThemeMode.system, icon: Icon(Icons.brightness_auto), label: Text('System')),
@@ -1363,6 +1767,9 @@ class SettingsDialog extends StatelessWidget {
                     Expanded(
                       child: Slider(
                         value: provider.fontSize,
+                        activeColor: const Color(0xFFD4AF37), // Axios Gold
+                        thumbColor: const Color(0xFFD4AF37), // Axios Gold
+                        inactiveColor: Colors.white24,
                         min: 12.0,
                         max: 32.0,
                         divisions: 10,
@@ -1489,17 +1896,12 @@ class DashboardScreen extends StatelessWidget {
     }
   }
 
-  String _getFormattedDate(bool isAmharic) {
+  String _getEnglishDate() {
     final now = DateTime.now();
-    if (isAmharic) {
-      final months = ['ጥር', 'የካቲት', 'መጋቢት', 'ሚያዝያ', 'ግንቦት', 'ሰኔ', 'ሐምሌ', 'ነሐሴ', 'መስከረም', 'ጥቅምት', 'ኅዳር', 'ታኅሣሥ'];
-      final weekdays = ['ሰኞ', 'ማክሰኞ', 'ረቡዕ', 'ሐሙስ', 'አርብ', 'ቅዳሜ', 'እሑድ'];
-      return '${weekdays[now.weekday - 1]}፣ ${months[now.month - 1]} ${now.day}፣ ${now.year}';
-    } else {
-      final months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-      final weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-      return '${weekdays[now.weekday - 1]}, ${months[now.month - 1]} ${now.day}, ${now.year}';
-    }
+    final weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    final months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    
+    return '${weekdays[now.weekday - 1]}, ${months[now.month - 1]} ${now.day}, ${now.year}';
   }
 
   @override
@@ -1522,7 +1924,7 @@ class DashboardScreen extends StatelessWidget {
                 children: [
                   const SizedBox(height: 16),
                   Text(
-                    _getFormattedDate(provider.isAmharic).toUpperCase(),
+                    _getEnglishDate().toUpperCase(),
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.6),
                       fontSize: 12,
@@ -1541,60 +1943,69 @@ class DashboardScreen extends StatelessWidget {
                   const SizedBox(height: 48),
                   
                   // Verse of the Day Card
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(32),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF2A2A2A), Color(0xFF1E1E1E)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                  InkWell(
+                    onTap: () {
+                      final votd = provider.verseOfTheDay;
+                      if (votd['book']!.isNotEmpty) {
+                        provider.selectBook(votd['book']!);
+                        provider.selectChapter(int.parse(votd['chapter']!));
+                        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomeScreen()));
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(24),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(32),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF2A2A2A), Color(0xFF1E1E1E)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: Colors.white.withOpacity(0.05)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
                       ),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: Colors.white.withOpacity(0.05)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          provider.isAmharic ? 'የዕለቱ ጥቅስ' : 'VERSE OF THE DAY',
-                          style: TextStyle(
-                            color: const Color(0xFFD4AF37).withOpacity(0.8),
-                            fontSize: 11,
-                            letterSpacing: 2.0,
-                            fontWeight: FontWeight.bold,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            provider.isAmharic ? 'የዕለቱ ጥቅስ' : 'VERSE OF THE DAY',
+                            style: TextStyle(
+                              color: const Color(0xFFD4AF37).withOpacity(0.8),
+                              fontSize: 11,
+                              letterSpacing: 2.0,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          provider.isAmharic 
-                              ? 'እግዚአብሔር እረኛዬ ነው፥ የሚያሳጣኝም የለም። በለመለመ መስክ ያሳድረኛል፤ በዕረፍት ውኃ ዘንድ ይመራኛል።' 
-                              : 'The Lord is my shepherd; I shall not want. He maketh me to lie down in green pastures: he leadeth me beside the still waters.',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            height: 1.6,
-                            fontFamily: GoogleFonts.notoSansEthiopic().fontFamily,
-                            fontWeight: FontWeight.w500,
+                          const SizedBox(height: 24),
+                          Text(
+                            provider.verseOfTheDay['text']!,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              height: 1.6,
+                              fontFamily: GoogleFonts.notoSansEthiopic().fontFamily,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          provider.isAmharic ? 'መዝሙር 23:1-2' : 'Psalm 23:1-2',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.5),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
+                          const SizedBox(height: 24),
+                          Text(
+                            provider.verseOfTheDay['reference']!,
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.5),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                   

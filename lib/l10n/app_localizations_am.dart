@@ -422,4 +422,74 @@ class AppLocalizationsAm extends AppLocalizations {
 
   @override
   String get gameKeepPracticing => 'መለማመዱን ይቀጥሉ — ቃሉ ዋጋ አለው።';
+
+  @override
+  String get newSermonNote => 'የስብከት ማስታወሻ';
+
+  @override
+  String get sermonPassage => 'ክፍል (ለምሳሌ ዮሐንስ 3)';
+
+  @override
+  String get sermonSpeaker => 'ሰባኪ';
+
+  @override
+  String get sermonChurch => 'ቤተ ክርስቲያን';
+
+  @override
+  String get sermonNoteHint => 'ምን ተሰበከ? ምን ልብዎን ነካ?';
+
+  @override
+  String get saveLabel => 'አስቀምጥ';
+
+  @override
+  String get categoryAll => 'ሁሉም';
+
+  @override
+  String get categoryPersonal => 'የግል';
+
+  @override
+  String get categorySermon => 'ስብከት';
+
+  @override
+  String get categoryPrayer => 'ጸሎት';
+
+  @override
+  String get dailyChallenge => 'የዕለቱ ፈተና';
+
+  @override
+  String get dailyChallengeHint => '5 ጥያቄዎች። በየቀኑ። እሳቱን አያጥፉ።';
+
+  @override
+  String challengeDoneToday(int score) {
+    return 'ዛሬ ተጠናቋል — $score/5';
+  }
+
+  @override
+  String challengeStreakLabel(int days) {
+    return 'የ$days ቀን ተከታታይ';
+  }
+
+  @override
+  String get comeBackTomorrow => 'ነገ አዲስ ጥያቄዎች!';
+
+  @override
+  String get playNow => 'ይጫወቱ';
+
+  @override
+  String get prayerMoment => 'የጸሎት ጊዜ';
+
+  @override
+  String get prayerMomentHint => 'እያንዳንዱን ቀን በጸጥታ የጸሎት ጊዜ ይጀምሩ።';
+
+  @override
+  String get prayerMomentTitle => 'ቆም ይበሉ። ይተንፍሱ። ይጸልዩ።';
+
+  @override
+  String get prayerMomentPrayers => 'በልብዎ ያለውን ይጸልዩ፦';
+
+  @override
+  String get amen => 'አሜን';
+
+  @override
+  String get skipForNow => 'አሁን ይለፉ';
 }

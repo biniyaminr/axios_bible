@@ -105,6 +105,34 @@ class SettingsDialog extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 32),
+                Text(
+                  l10n.prayerMoment,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        l10n.prayerMomentHint,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ),
+                    Switch(
+                      value: provider.prayerMomentEnabled,
+                      activeThumbColor: const Color(0xFFD4AF37),
+                      onChanged: provider.setPrayerMomentEnabled,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 32),
                 _NotificationSetting(
                   title: l10n.dailyReminder,
                   hint: l10n.dailyReminderHint,

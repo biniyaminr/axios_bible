@@ -735,6 +735,18 @@ class BibleProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Whether the once-a-day Prayer Moment splash shows on app open.
+  bool _prayerMomentEnabled = true;
+  bool get prayerMomentEnabled => _prayerMomentEnabled;
+
+  void setPrayerMomentEnabled(bool enabled) {
+    if (_prayerMomentEnabled != enabled) {
+      _prayerMomentEnabled = enabled;
+      saveSettings();
+      notifyListeners();
+    }
+  }
+
   void setThemeMode(ThemeMode mode) {
     if (_themeMode != mode) {
       _themeMode = mode;
@@ -822,6 +834,9 @@ class BibleProvider extends ChangeNotifier {
         if (decoded.containsKey('votdMinute')) {
           _votdMinute = decoded['votdMinute'] as int;
         }
+        if (decoded.containsKey('prayerMomentEnabled')) {
+          _prayerMomentEnabled = decoded['prayerMomentEnabled'] as bool;
+        }
         notifyListeners();
       }
     } catch (e) {
@@ -846,6 +861,7 @@ class BibleProvider extends ChangeNotifier {
         'votdEnabled': _votdEnabled,
         'votdHour': _votdHour,
         'votdMinute': _votdMinute,
+        'prayerMomentEnabled': _prayerMomentEnabled,
       };
       await file.writeAsString(json.encode(settings));
     } catch (e) {
@@ -868,6 +884,8 @@ class BibleProvider extends ChangeNotifier {
     required String text,
     required String content,
     String category = "Personal",
+    String speaker = '',
+    String church = '',
   }) async {
     if (content.trim().isEmpty) return;
 
@@ -877,6 +895,8 @@ class BibleProvider extends ChangeNotifier {
       'userNote': content,
       'category': category,
       'timestamp': DateTime.now().toIso8601String(),
+      'speaker': speaker.trim(),
+      'church': church.trim(),
     };
     _notes.insert(0, note);
     notifyListeners();
@@ -886,6 +906,16 @@ class BibleProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint("Error saving note: $e");
     }
+  }
+
+  /// Deletes a note by DB id (safe under filtered views, unlike the
+  /// index-based [deleteNote]).
+  void deleteNoteById(int id) {
+    _notes.removeWhere((n) => n['id'] == id);
+    UserDataStore.instance
+        .deleteNote(id)
+        .catchError((e) => debugPrint("Error deleting note: $e"));
+    notifyListeners();
   }
 
   bool hasNote(String verseId) {

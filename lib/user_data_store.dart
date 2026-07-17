@@ -45,7 +45,7 @@ class UserDataStore {
   Future<Database> _open() async {
     final db = await openDatabase(
       p.join(await getDatabasesPath(), 'user_data.db'),
-      version: 3,
+      version: 4,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE notes(
@@ -54,7 +54,9 @@ class UserDataStore {
             text TEXT NOT NULL DEFAULT '',
             user_note TEXT NOT NULL,
             category TEXT NOT NULL DEFAULT 'Personal',
-            timestamp TEXT NOT NULL
+            timestamp TEXT NOT NULL,
+            speaker TEXT NOT NULL DEFAULT '',
+            church TEXT NOT NULL DEFAULT ''
           )
         ''');
         await db.execute('''
@@ -86,6 +88,15 @@ class UserDataStore {
         }
         if (oldVersion < 3) {
           await _createPrayerTable(db);
+        }
+        if (oldVersion < 4) {
+          // Sermon-note fields.
+          await db.execute(
+            "ALTER TABLE notes ADD COLUMN speaker TEXT NOT NULL DEFAULT ''",
+          );
+          await db.execute(
+            "ALTER TABLE notes ADD COLUMN church TEXT NOT NULL DEFAULT ''",
+          );
         }
       },
     );
@@ -219,6 +230,8 @@ class UserDataStore {
         .map(
           (r) => {
             'id': r['id'],
+            'speaker': r['speaker'] ?? '',
+            'church': r['church'] ?? '',
             'reference': r['reference'],
             'text': r['text'],
             'userNote': r['user_note'],
@@ -238,6 +251,8 @@ class UserDataStore {
       'user_note': note['userNote'],
       'category': note['category'],
       'timestamp': note['timestamp'],
+      'speaker': note['speaker'] ?? '',
+      'church': note['church'] ?? '',
     });
   }
 

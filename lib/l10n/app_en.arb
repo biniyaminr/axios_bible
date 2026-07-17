@@ -244,5 +244,41 @@
   },
   "gamePerfect": "Perfect!",
   "gameWellDone": "Well done!",
-  "gameKeepPracticing": "Keep practicing — the Word is worth it."
+  "gameKeepPracticing": "Keep practicing — the Word is worth it.",
+  "newSermonNote": "Sermon Note",
+  "sermonPassage": "Passage (e.g. John 3)",
+  "sermonSpeaker": "Preacher",
+  "sermonChurch": "Church",
+  "sermonNoteHint": "What was preached? What spoke to you?",
+  "saveLabel": "Save",
+  "categoryAll": "All",
+  "categoryPersonal": "Personal",
+  "categorySermon": "Sermon",
+  "categoryPrayer": "Prayer",
+  "dailyChallenge": "Daily Challenge",
+  "dailyChallengeHint": "5 questions. Every day. Keep the flame alive.",
+  "challengeDoneToday": "Completed today — {score}/5",
+  "@challengeDoneToday": {
+    "placeholders": {
+      "score": {
+        "type": "int"
+      }
+    }
+  },
+  "challengeStreakLabel": "{days}-day streak",
+  "@challengeStreakLabel": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "comeBackTomorrow": "New questions tomorrow!",
+  "playNow": "Play",
+  "prayerMoment": "Prayer Moment",
+  "prayerMomentHint": "Begin each day with a quiet moment of prayer.",
+  "prayerMomentTitle": "Pause. Breathe. Pray.",
+  "prayerMomentPrayers": "Pray over what's on your heart:",
+  "amen": "Amen",
+  "skipForNow": "Skip for now"
 }

@@ -100,6 +100,62 @@ void main() {
     );
   });
 
+  test('daily challenge is date-seeded: same day same questions', () {
+    final day = DateTime(2026, 7, 17);
+    final a = buildDailyChallenge(verses, day);
+    final b = buildDailyChallenge(verses, day);
+    expect(a.length, 5);
+    expect([for (final q in a) q.prompt], [for (final q in b) q.prompt]);
+
+    final other = buildDailyChallenge(verses, DateTime(2026, 7, 18));
+    expect(
+      [for (final q in a) q.prompt + q.options.join()] ==
+          [for (final q in other) q.prompt + q.options.join()],
+      false,
+    );
+  });
+
+  test('challenge streak: increments on consecutive days only', () {
+    final today = DateTime(2026, 7, 17);
+    // Never played → 1.
+    expect(
+      challengeStreakAfterCompletion(lastDate: null, streak: 0, today: today),
+      1,
+    );
+    // Played yesterday → +1.
+    expect(
+      challengeStreakAfterCompletion(
+        lastDate: '2026-07-16',
+        streak: 4,
+        today: today,
+      ),
+      5,
+    );
+    // Already played today → unchanged.
+    expect(
+      challengeStreakAfterCompletion(
+        lastDate: '2026-07-17',
+        streak: 5,
+        today: today,
+      ),
+      5,
+    );
+    // Gap → reset to 1.
+    expect(
+      challengeStreakAfterCompletion(
+        lastDate: '2026-07-10',
+        streak: 9,
+        today: today,
+      ),
+      1,
+    );
+
+    expect(challengeStreakAlive(lastDate: '2026-07-16', today: today), true);
+    expect(challengeStreakAlive(lastDate: '2026-07-17', today: today), true);
+    expect(challengeStreakAlive(lastDate: '2026-07-14', today: today), false);
+    expect(challengeStreakAlive(lastDate: null, today: today), false);
+  });
+
   test('too-small pools return no questions instead of crashing', () {
     final tiny = verses.take(3).toList();
     expect(buildReferenceQuiz(tiny, 5, Random(1)), isEmpty);

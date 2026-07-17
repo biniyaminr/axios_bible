@@ -102,9 +102,7 @@ class PrayersScreen extends StatelessWidget {
   }
 
   void _showAddPrayerSheet(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
     final provider = context.read<PrayerProvider>();
-    final controller = TextEditingController();
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -112,73 +110,98 @@ class PrayersScreen extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (sheetContext) {
-        return Padding(
-          padding: EdgeInsets.fromLTRB(
-            24,
-            24,
-            24,
-            24 + MediaQuery.of(sheetContext).viewInsets.bottom,
+      builder: (_) => _AddPrayerSheet(provider: provider),
+    );
+  }
+}
+
+/// Owns its text controller so it is disposed with the sheet's own state,
+/// after the close animation — disposing it from `whenComplete` crashes
+/// ('_dependents.isEmpty' assertion) because the TextField is still mounted
+/// while the sheet animates out.
+class _AddPrayerSheet extends StatefulWidget {
+  final PrayerProvider provider;
+  const _AddPrayerSheet({required this.provider});
+
+  @override
+  State<_AddPrayerSheet> createState() => _AddPrayerSheetState();
+}
+
+class _AddPrayerSheetState extends State<_AddPrayerSheet> {
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _save(String text) {
+    widget.provider.addPrayer(text);
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        24,
+        24,
+        24,
+        24 + MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.addPrayer,
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: 16),
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            maxLines: 3,
+            minLines: 1,
+            textInputAction: TextInputAction.done,
+            decoration: InputDecoration(
+              hintText: l10n.prayerHint,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: _gold, width: 2),
+              ),
+            ),
+            onSubmitted: _save,
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              Text(
-                l10n.addPrayer,
-                style: Theme.of(
-                  sheetContext,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(l10n.cancel),
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                autofocus: true,
-                maxLines: 3,
-                minLines: 1,
-                textInputAction: TextInputAction.done,
-                decoration: InputDecoration(
-                  hintText: l10n.prayerHint,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: _gold, width: 2),
-                  ),
+              const SizedBox(width: 8),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: _gold,
+                  foregroundColor: Colors.black,
                 ),
-                onSubmitted: (text) {
-                  provider.addPrayer(text);
-                  Navigator.pop(sheetContext);
-                },
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(sheetContext),
-                    child: Text(l10n.cancel),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _gold,
-                      foregroundColor: Colors.black,
-                    ),
-                    onPressed: () {
-                      provider.addPrayer(controller.text);
-                      Navigator.pop(sheetContext);
-                    },
-                    child: Text(l10n.addPrayer),
-                  ),
-                ],
+                onPressed: () => _save(_controller.text),
+                child: Text(l10n.addPrayer),
               ),
             ],
           ),
-        );
-      },
-    ).whenComplete(controller.dispose);
+        ],
+      ),
+    );
   }
 }
 

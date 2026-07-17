@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'l10n/app_localizations.dart';
+import 'bible_provider.dart';
 import 'bookmarks_screen.dart';
 import 'plans_screen.dart';
+import 'prayer_moment_screen.dart';
 import 'premium_bible_screen.dart';
 import 'search_screen.dart';
 import 'study_hub_screen.dart';
@@ -34,6 +37,26 @@ class _AppShellState extends State<AppShell> {
       SearchScreen(onGoToReading: _goToReading, onBack: _goBack), // 3
       BookmarksScreen(onGoToReading: _goToReading), // 4
     ]);
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _maybeShowPrayerMoment(),
+    );
+  }
+
+  /// Once a day, open with a quiet full-screen prayer pause.
+  Future<void> _maybeShowPrayerMoment() async {
+    if (!mounted) return;
+    final enabled = context.read<BibleProvider>().prayerMomentEnabled;
+    if (!await shouldShowPrayerMoment(enabled)) return;
+    if (!mounted) return;
+    Navigator.of(context).push(
+      PageRouteBuilder<void>(
+        transitionDuration: const Duration(milliseconds: 500),
+        pageBuilder: (_, animation, _) => FadeTransition(
+          opacity: animation,
+          child: const PrayerMomentScreen(),
+        ),
+      ),
+    );
   }
 
   void _selectTab(int index) {

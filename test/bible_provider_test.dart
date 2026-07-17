@@ -417,6 +417,79 @@ void main() {
     expect(reloaded.recentSearches, provider.recentSearches);
   });
 
+  test('sermon notes store speaker and church, and migrate from v3', () async {
+    // Recreate a v3 database (no speaker/church columns) with one note.
+    final path = p.join(await getDatabasesPath(), 'user_data.db');
+    final v3 = await openDatabase(
+      path,
+      version: 3,
+      onCreate: (db, version) async {
+        await db.execute(
+          'CREATE TABLE notes(id INTEGER PRIMARY KEY '
+          'AUTOINCREMENT, reference TEXT NOT NULL, text TEXT NOT NULL '
+          "DEFAULT '', user_note TEXT NOT NULL, category TEXT NOT NULL "
+          "DEFAULT 'Personal', timestamp TEXT NOT NULL)",
+        );
+        await db.execute(
+          'CREATE TABLE highlights(verse_key TEXT PRIMARY KEY, color INTEGER '
+          'NOT NULL)',
+        );
+        await db.execute(
+          'CREATE TABLE bookmarks(id INTEGER PRIMARY KEY '
+          'AUTOINCREMENT, book TEXT NOT NULL, chapter INTEGER NOT NULL, '
+          "verse_num TEXT NOT NULL, text TEXT NOT NULL DEFAULT '')",
+        );
+        await db.execute(
+          'CREATE TABLE read_chapters(chapter_key TEXT '
+          'PRIMARY KEY)',
+        );
+        await db.execute(
+          'CREATE TABLE started_plans(plan_id TEXT PRIMARY KEY, '
+          'started_at TEXT NOT NULL)',
+        );
+        await db.execute(
+          'CREATE TABLE plan_progress(plan_id TEXT NOT NULL, '
+          'day INTEGER NOT NULL, completed_at TEXT NOT NULL, '
+          'PRIMARY KEY(plan_id, day))',
+        );
+        await db.execute(
+          'CREATE TABLE prayers(id INTEGER PRIMARY KEY '
+          'AUTOINCREMENT, text TEXT NOT NULL, created_at TEXT NOT NULL, '
+          'answered_at TEXT)',
+        );
+      },
+    );
+    await v3.insert('notes', {
+      'reference': 'John 3',
+      'user_note': 'old note',
+      'category': 'Personal',
+      'timestamp': DateTime.now().toIso8601String(),
+    });
+    await v3.close();
+
+    // Opening through the store runs the v4 upgrade.
+    final store = UserDataStore.instance;
+    final notes = await store.loadNotes();
+    expect(notes.single['userNote'], 'old note');
+    expect(notes.single['speaker'], '');
+    expect(notes.single['church'], '');
+
+    // New sermon note carries its metadata.
+    await store.insertNote({
+      'reference': 'ዮሐንስ 3',
+      'text': '',
+      'userNote': 'On being born again',
+      'category': 'Sermon',
+      'timestamp': DateTime.now().toIso8601String(),
+      'speaker': 'Pastor Daniel',
+      'church': 'Meserete Kristos',
+    });
+    final all = await store.loadNotes();
+    expect(all.first['speaker'], 'Pastor Daniel');
+    expect(all.first['church'], 'Meserete Kristos');
+    expect(all.first['category'], 'Sermon');
+  });
+
   test('daily reminder settings default off at 7:00 and update', () async {
     final provider = BibleProvider();
     expect(provider.reminderEnabled, false);

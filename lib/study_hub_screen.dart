@@ -46,6 +46,8 @@ class StudyHubScreen extends StatelessWidget {
                 _buildHeroCard(context, provider),
 
                 const SizedBox(height: 16),
+                const DailyChallengeCard(),
+                const SizedBox(height: 12),
                 _buildPrayerListCard(context),
                 const SizedBox(height: 12),
                 _buildGamesCard(context),

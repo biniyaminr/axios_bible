@@ -865,6 +865,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Keep practicing — the Word is worth it.'**
   String get gameKeepPracticing;
+
+  /// No description provided for @newSermonNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Sermon Note'**
+  String get newSermonNote;
+
+  /// No description provided for @sermonPassage.
+  ///
+  /// In en, this message translates to:
+  /// **'Passage (e.g. John 3)'**
+  String get sermonPassage;
+
+  /// No description provided for @sermonSpeaker.
+  ///
+  /// In en, this message translates to:
+  /// **'Preacher'**
+  String get sermonSpeaker;
+
+  /// No description provided for @sermonChurch.
+  ///
+  /// In en, this message translates to:
+  /// **'Church'**
+  String get sermonChurch;
+
+  /// No description provided for @sermonNoteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What was preached? What spoke to you?'**
+  String get sermonNoteHint;
+
+  /// No description provided for @saveLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get saveLabel;
+
+  /// No description provided for @categoryAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get categoryAll;
+
+  /// No description provided for @categoryPersonal.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal'**
+  String get categoryPersonal;
+
+  /// No description provided for @categorySermon.
+  ///
+  /// In en, this message translates to:
+  /// **'Sermon'**
+  String get categorySermon;
+
+  /// No description provided for @categoryPrayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Prayer'**
+  String get categoryPrayer;
+
+  /// No description provided for @dailyChallenge.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily Challenge'**
+  String get dailyChallenge;
+
+  /// No description provided for @dailyChallengeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'5 questions. Every day. Keep the flame alive.'**
+  String get dailyChallengeHint;
+
+  /// No description provided for @challengeDoneToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed today — {score}/5'**
+  String challengeDoneToday(int score);
+
+  /// No description provided for @challengeStreakLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{days}-day streak'**
+  String challengeStreakLabel(int days);
+
+  /// No description provided for @comeBackTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'New questions tomorrow!'**
+  String get comeBackTomorrow;
+
+  /// No description provided for @playNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Play'**
+  String get playNow;
+
+  /// No description provided for @prayerMoment.
+  ///
+  /// In en, this message translates to:
+  /// **'Prayer Moment'**
+  String get prayerMoment;
+
+  /// No description provided for @prayerMomentHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Begin each day with a quiet moment of prayer.'**
+  String get prayerMomentHint;
+
+  /// No description provided for @prayerMomentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause. Breathe. Pray.'**
+  String get prayerMomentTitle;
+
+  /// No description provided for @prayerMomentPrayers.
+  ///
+  /// In en, this message translates to:
+  /// **'Pray over what\'s on your heart:'**
+  String get prayerMomentPrayers;
+
+  /// No description provided for @amen.
+  ///
+  /// In en, this message translates to:
+  /// **'Amen'**
+  String get amen;
+
+  /// No description provided for @skipForNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip for now'**
+  String get skipForNow;
 }
 
 class _AppLocalizationsDelegate

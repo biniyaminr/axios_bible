@@ -209,3 +209,44 @@ bool _sameOrder(List<String> a, List<String> b) {
   }
   return true;
 }
+
+/// The daily challenge: five questions seeded by the calendar date, so the
+/// whole church gets the same challenge on the same day.
+List<QuizQuestion> buildDailyChallenge(
+  List<Map<String, String>> verses,
+  DateTime date,
+) {
+  final rng = Random(date.year * 10000 + date.month * 100 + date.day);
+  final questions = [
+    ...buildReferenceQuiz(verses, 3, rng),
+    ...buildFillBlankQuiz(verses, 2, rng),
+  ]..shuffle(rng);
+  return questions.take(5).toList();
+}
+
+/// Streak after completing today's challenge. [lastDate] is the previous
+/// completion day as 'yyyy-mm-dd' (null when never played).
+int challengeStreakAfterCompletion({
+  required String? lastDate,
+  required int streak,
+  required DateTime today,
+}) {
+  final todayKey = dateKey(today);
+  if (lastDate == todayKey) return streak; // already completed today
+  final yesterday = dateKey(today.subtract(const Duration(days: 1)));
+  return lastDate == yesterday ? streak + 1 : 1;
+}
+
+/// Whether a stored streak is still alive on [today] (completed today or
+/// yesterday); otherwise it should display as zero.
+bool challengeStreakAlive({
+  required String? lastDate,
+  required DateTime today,
+}) {
+  if (lastDate == null) return false;
+  return lastDate == dateKey(today) ||
+      lastDate == dateKey(today.subtract(const Duration(days: 1)));
+}
+
+String dateKey(DateTime d) =>
+    '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';

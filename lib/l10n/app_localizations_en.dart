@@ -432,4 +432,76 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gameKeepPracticing => 'Keep practicing — the Word is worth it.';
+
+  @override
+  String get newSermonNote => 'Sermon Note';
+
+  @override
+  String get sermonPassage => 'Passage (e.g. John 3)';
+
+  @override
+  String get sermonSpeaker => 'Preacher';
+
+  @override
+  String get sermonChurch => 'Church';
+
+  @override
+  String get sermonNoteHint => 'What was preached? What spoke to you?';
+
+  @override
+  String get saveLabel => 'Save';
+
+  @override
+  String get categoryAll => 'All';
+
+  @override
+  String get categoryPersonal => 'Personal';
+
+  @override
+  String get categorySermon => 'Sermon';
+
+  @override
+  String get categoryPrayer => 'Prayer';
+
+  @override
+  String get dailyChallenge => 'Daily Challenge';
+
+  @override
+  String get dailyChallengeHint =>
+      '5 questions. Every day. Keep the flame alive.';
+
+  @override
+  String challengeDoneToday(int score) {
+    return 'Completed today — $score/5';
+  }
+
+  @override
+  String challengeStreakLabel(int days) {
+    return '$days-day streak';
+  }
+
+  @override
+  String get comeBackTomorrow => 'New questions tomorrow!';
+
+  @override
+  String get playNow => 'Play';
+
+  @override
+  String get prayerMoment => 'Prayer Moment';
+
+  @override
+  String get prayerMomentHint =>
+      'Begin each day with a quiet moment of prayer.';
+
+  @override
+  String get prayerMomentTitle => 'Pause. Breathe. Pray.';
+
+  @override
+  String get prayerMomentPrayers => 'Pray over what\'s on your heart:';
+
+  @override
+  String get amen => 'Amen';
+
+  @override
+  String get skipForNow => 'Skip for now';
 }

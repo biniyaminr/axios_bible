@@ -32,6 +32,564 @@ class _BestScores {
   }
 }
 
+/// Today's challenge status, stored in SharedPreferences.
+class _ChallengeState {
+  final String? lastDate;
+  final int streak;
+  final int lastScore;
+
+  const _ChallengeState({
+    required this.lastDate,
+    required this.streak,
+    required this.lastScore,
+  });
+
+  bool get doneToday => lastDate == dateKey(DateTime.now());
+  int get displayStreak =>
+      challengeStreakAlive(lastDate: lastDate, today: DateTime.now())
+      ? streak
+      : 0;
+
+  static Future<_ChallengeState> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    return _ChallengeState(
+      lastDate: prefs.getString('challenge_last_date'),
+      streak: prefs.getInt('challenge_streak') ?? 0,
+      lastScore: prefs.getInt('challenge_last_score') ?? 0,
+    );
+  }
+
+  /// Records a completion with [score]; keeps today's best score.
+  static Future<void> recordCompletion(int score) async {
+    final prefs = await SharedPreferences.getInstance();
+    final now = DateTime.now();
+    final last = prefs.getString('challenge_last_date');
+    final streak = challengeStreakAfterCompletion(
+      lastDate: last,
+      streak: prefs.getInt('challenge_streak') ?? 0,
+      today: now,
+    );
+    final doneToday = last == dateKey(now);
+    final prevScore = prefs.getInt('challenge_last_score') ?? 0;
+    await prefs.setString('challenge_last_date', dateKey(now));
+    await prefs.setInt('challenge_streak', streak);
+    await prefs.setInt(
+      'challenge_last_score',
+      doneToday ? max(score, prevScore) : score,
+    );
+  }
+}
+
+/// The gradient hero card for the daily challenge, shown on the Home tab
+/// and at the top of the games hub.
+class DailyChallengeCard extends StatefulWidget {
+  const DailyChallengeCard({super.key});
+
+  @override
+  State<DailyChallengeCard> createState() => _DailyChallengeCardState();
+}
+
+class _DailyChallengeCardState extends State<DailyChallengeCard> {
+  _ChallengeState? _state;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final s = await _ChallengeState.load();
+    if (mounted) setState(() => _state = s);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final state = _state;
+    final done = state?.doneToday ?? false;
+    final streak = state?.displayStreak ?? 0;
+
+    return GestureDetector(
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute<void>(builder: (_) => const DailyChallengeScreen()),
+        );
+        _load();
+      },
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              _gold.withValues(alpha: 0.30),
+              _gold.withValues(alpha: 0.08),
+            ],
+          ),
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _gold.withValues(alpha: 0.55), width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: _gold.withValues(alpha: 0.18),
+              blurRadius: 18,
+              spreadRadius: 1,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Flame + streak badge
+            Column(
+              children: [
+                Icon(
+                  Icons.local_fire_department_rounded,
+                  color: streak > 0
+                      ? const Color(0xFFFF8F00)
+                      : onSurface.withValues(alpha: 0.3),
+                  size: 34,
+                ),
+                if (streak > 0)
+                  Text(
+                    '$streak',
+                    style: const TextStyle(
+                      color: Color(0xFFFF8F00),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.dailyChallenge,
+                    style: TextStyle(
+                      color: onSurface,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    done
+                        ? l10n.challengeDoneToday(state!.lastScore)
+                        : l10n.dailyChallengeHint,
+                    style: TextStyle(
+                      color: done ? _gold : onSurface.withValues(alpha: 0.6),
+                      fontSize: 13,
+                      fontWeight: done ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            done
+                ? const Icon(Icons.check_circle_rounded, color: _gold, size: 32)
+                : Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 9,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _gold,
+                      borderRadius: BorderRadius.circular(22),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _gold.withValues(alpha: 0.4),
+                          blurRadius: 10,
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      l10n.playNow,
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The daily challenge run: five date-seeded questions, ending in an
+/// animated score ring and the streak flame.
+class DailyChallengeScreen extends StatefulWidget {
+  const DailyChallengeScreen({super.key});
+
+  @override
+  State<DailyChallengeScreen> createState() => _DailyChallengeScreenState();
+}
+
+class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
+  List<QuizQuestion> _questions = [];
+  int _index = 0;
+  int _score = 0;
+  int? _picked;
+  bool _finished = false;
+  int _streak = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    final bible = context.read<BibleProvider>();
+    final verses = [
+      for (final ref in bible.dailyVerseRefs) bible.dailyVerseFor(ref),
+    ];
+    _questions = buildDailyChallenge(verses, DateTime.now());
+  }
+
+  void _pick(int option) {
+    if (_picked != null) return;
+    setState(() {
+      _picked = option;
+      if (option == _questions[_index].correctIndex) _score++;
+    });
+  }
+
+  Future<void> _next() async {
+    if (_index + 1 < _questions.length) {
+      setState(() {
+        _index++;
+        _picked = null;
+      });
+    } else {
+      await _ChallengeState.recordCompletion(_score);
+      final state = await _ChallengeState.load();
+      if (mounted) {
+        setState(() {
+          _streak = state.displayStreak;
+          _finished = true;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          l10n.dailyChallenge,
+          style: TextStyle(color: onSurface, fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+      ),
+      body: _questions.isEmpty
+          ? const Center(child: CircularProgressIndicator(color: _gold))
+          : _finished
+          ? _ChallengeResultView(
+              score: _score,
+              total: _questions.length,
+              streak: _streak,
+            )
+          : _buildQuestion(context, l10n),
+    );
+  }
+
+  Widget _buildQuestion(BuildContext context, AppLocalizations l10n) {
+    final question = _questions[_index];
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final answered = _picked != null;
+
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              l10n.questionOf(_index + 1, _questions.length),
+              style: TextStyle(
+                color: onSurface.withValues(alpha: 0.6),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Text(
+              '$_score',
+              style: const TextStyle(
+                color: _gold,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(3),
+          child: LinearProgressIndicator(
+            value: (_index + (answered ? 1 : 0)) / _questions.length,
+            minHeight: 5,
+            color: _gold,
+            backgroundColor: _gold.withValues(alpha: 0.15),
+          ),
+        ),
+        const SizedBox(height: 24),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                _gold.withValues(alpha: 0.15),
+                _gold.withValues(alpha: 0.03),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _gold.withValues(alpha: 0.4)),
+          ),
+          child: Column(
+            children: [
+              Text(
+                '“${question.prompt}”',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: onSurface, fontSize: 17, height: 1.6),
+              ),
+              if (answered) ...[
+                const SizedBox(height: 12),
+                Text(
+                  question.reference,
+                  style: const TextStyle(
+                    color: _gold,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        for (var i = 0; i < question.options.length; i++)
+          _OptionTile(
+            label: question.options[i],
+            state: !answered
+                ? _OptionState.idle
+                : i == question.correctIndex
+                ? _OptionState.correct
+                : i == _picked
+                ? _OptionState.wrong
+                : _OptionState.disabled,
+            onTap: () => _pick(i),
+          ),
+        if (answered) ...[
+          const SizedBox(height: 12),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: _gold,
+              foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            onPressed: _next,
+            child: Text(
+              _index + 1 < _questions.length
+                  ? l10n.nextQuestion
+                  : l10n.finishGame,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _ChallengeResultView extends StatelessWidget {
+  final int score;
+  final int total;
+  final int streak;
+
+  const _ChallengeResultView({
+    required this.score,
+    required this.total,
+    required this.streak,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final ratio = total == 0 ? 0.0 : score / total;
+    final headline = ratio == 1.0
+        ? l10n.gamePerfect
+        : ratio >= 0.6
+        ? l10n.gameWellDone
+        : l10n.gameKeepPracticing;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Animated score ring
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: ratio),
+              duration: const Duration(milliseconds: 900),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, _) {
+                return SizedBox(
+                  width: 150,
+                  height: 150,
+                  child: CustomPaint(
+                    painter: _ScoreRingPainter(
+                      progress: value,
+                      color: _gold,
+                      track: _gold.withValues(alpha: 0.15),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '$score/$total',
+                        style: TextStyle(
+                          color: onSurface,
+                          fontSize: 34,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 24),
+            Text(
+              headline,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: onSurface,
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            if (streak > 0) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF8F00).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: const Color(0xFFFF8F00).withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.local_fire_department_rounded,
+                      color: Color(0xFFFF8F00),
+                      size: 22,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      l10n.challengeStreakLabel(streak),
+                      style: const TextStyle(
+                        color: Color(0xFFFF8F00),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 20),
+            Text(
+              l10n.comeBackTomorrow,
+              style: TextStyle(
+                color: onSurface.withValues(alpha: 0.55),
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 28),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: _gold,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 14,
+                ),
+              ),
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                l10n.finishGame,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ScoreRingPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+  final Color track;
+
+  _ScoreRingPainter({
+    required this.progress,
+    required this.color,
+    required this.track,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width - 12) / 2;
+    final trackPaint = Paint()
+      ..color = track
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 11;
+    final arcPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 11
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawCircle(center, radius, trackPaint);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -pi / 2,
+      progress * 2 * pi,
+      false,
+      arcPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ScoreRingPainter old) =>
+      old.progress != progress || old.color != color;
+}
+
 /// The games hub: one card per mini-game, with the best score so far.
 class GamesHubScreen extends StatefulWidget {
   const GamesHubScreen({super.key});
@@ -76,6 +634,8 @@ class _GamesHubScreenState extends State<GamesHubScreen> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
+          const DailyChallengeCard(),
+          const SizedBox(height: 18),
           _GameCard(
             icon: Icons.menu_book_rounded,
             title: l10n.gameGuessReference,

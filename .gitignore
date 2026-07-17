@@ -43,3 +43,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Remote-hosted translation data (~1 GB) — push to a separate data repo, not this one
+bible_data_remote/

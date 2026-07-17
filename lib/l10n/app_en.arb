@@ -1,0 +1,248 @@
+{
+  "@@locale": "en",
+  "appTitle": "Axios Bible",
+  "navHome": "Home",
+  "navBible": "Bible",
+  "navSearch": "Search",
+  "navBookmarks": "Bookmarks",
+  "settings": "Settings",
+  "theme": "Theme",
+  "themeSystem": "System",
+  "themeLight": "Light",
+  "themeDark": "Dark",
+  "fontSize": "Font Size",
+  "audioSpeed": "Audio Speed",
+  "lineSpacing": "Line Spacing",
+  "language": "Language",
+  "languageSystem": "System",
+  "bookmarksTitle": "Bookmarks",
+  "noBookmarks": "No bookmarks yet.",
+  "noBookmarksHint": "No bookmarks yet. Save meaningful verses to find them quickly.",
+  "searchBibleTitle": "Search the Bible",
+  "searchHint": "Search words or verses…",
+  "searchTranslationsHint": "Search translations…",
+  "filterVerses": "Verses",
+  "filterChapters": "Chapters",
+  "filterTexts": "Texts",
+  "noResults": "No results found…",
+  "clear": "Clear",
+  "studyHub": "Study Hub",
+  "currentJourney": "Current Journey",
+  "recentRevelations": "Recent Revelations",
+  "savedBookmarks": "Saved Bookmarks",
+  "continueReading": "CONTINUE READING",
+  "startJourney": "Start your journey today.",
+  "tapToResume": "Tap to resume reading",
+  "tapToOpen": "Tap to open the Bible",
+  "noRevelations": "No revelations yet.",
+  "noJournalEntries": "No journal entries yet. Add your reflections while reading.",
+  "myJournal": "My Journal",
+  "oldTestament": "Old Testament",
+  "newTestament": "New Testament",
+  "translationStore": "Translation Store",
+  "translationsSummary": "{total} translations — {bundled} built-in, the rest download on demand",
+  "@translationsSummary": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      },
+      "bundled": {
+        "type": "int"
+      }
+    }
+  },
+  "currentlyReading": "Currently reading ({name})",
+  "@currentlyReading": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "installedTranslation": "Installed ({name})",
+  "@installedTranslation": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "readyToInstall": "Ready to install ({name})",
+  "@readyToInstall": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "readyToDownload": "Ready to download — needs internet ({name})",
+  "@readyToDownload": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadFailed": "Download failed — check your connection",
+  "remove": "Remove",
+  "chapterLabel": "Chapter {number}",
+  "@chapterLabel": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "selectBook": "Select Book",
+  "selectChapter": "Select Chapter",
+  "selectTranslation": "Select Translation",
+  "selectVersion": "Select Version",
+  "parallelTranslation": "Parallel Translation",
+  "writeRevelation": "Write your revelation…",
+  "sealRevelation": "Seal Revelation",
+  "revelationSealed": "Revelation Sealed",
+  "copiedToClipboard": "Copied to clipboard",
+  "audioComingSoon": "Audio Player coming soon!",
+  "pleaseSelectBook": "Please select a book",
+  "noVersesFound": "No verses found",
+  "navPlans": "Plans",
+  "readingPlans": "Reading Plans",
+  "readingStreak": "{days}-day streak",
+  "@readingStreak": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "startPlan": "Start Plan",
+  "continuePlan": "Continue",
+  "dayLabel": "Day {number}",
+  "@dayLabel": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "daysCompleted": "{done} of {total} days completed",
+  "@daysCompleted": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "planBibleYearTitle": "Bible in a Year",
+  "planBibleYearDesc": "Read the whole Bible in 365 days, a few chapters at a time.",
+  "planNt90Title": "New Testament in 90 Days",
+  "planNt90Desc": "From Matthew to Revelation in three months.",
+  "planGospels30Title": "The Gospels in 30 Days",
+  "planGospels30Desc": "Walk with Jesus through Matthew, Mark, Luke, and John.",
+  "planPsalms30Title": "Psalms in 30 Days",
+  "planPsalms30Desc": "Five psalms a day for a month of prayer and praise.",
+  "planProverbs31Title": "Proverbs in a Month",
+  "planProverbs31Desc": "One chapter of wisdom for every day of the month.",
+  "shareAsImage": "Share as Image",
+  "shareImageFailed": "Couldn't create the image — please try again.",
+  "dailyReminder": "Daily reading reminder",
+  "dailyReminderHint": "A gentle nudge to keep your streak alive.",
+  "reminderTime": "Reminder time",
+  "reminderNotificationTitle": "Time for today's reading 📖",
+  "reminderNotificationBody": "A few minutes in the Word keeps your streak going.",
+  "notificationsDenied": "Notifications are turned off. Allow them in your phone's Settings to get reminders.",
+  "prayerList": "Prayer List",
+  "addPrayer": "Add Prayer",
+  "prayerHint": "What's on your heart to pray for?",
+  "noPrayersHint": "Your prayer list is empty.\nAdd what's on your heart.",
+  "activePrayers": "Active",
+  "answeredPrayers": "Answered",
+  "markAnswered": "Mark as answered",
+  "answeredOn": "Answered {date}",
+  "@answeredOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "prayersActive": "{count} active prayers",
+  "@prayersActive": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prayerDeleted": "Prayer removed",
+  "undo": "Undo",
+  "cancel": "Cancel",
+  "verseOfTheDay": "Verse of the Day",
+  "verseOfDayHint": "A verse each morning to start your day in the Word.",
+  "drawerHeader": "Menu & Translations",
+  "getMoreTranslations": "Get More Translations",
+  "removeTranslation": "Remove",
+  "popularThemes": "Popular Themes",
+  "recentSearches": "Recent Searches",
+  "themeLove": "Love",
+  "themeFaith": "Faith",
+  "themeHope": "Hope",
+  "bibleGames": "Bible Games",
+  "bibleGamesHint": "Test your Bible knowledge",
+  "gameGuessReference": "Guess the Reference",
+  "gameGuessReferenceDesc": "Which passage is this verse from?",
+  "gameFillBlank": "Fill in the Blank",
+  "gameFillBlankDesc": "Choose the missing word.",
+  "gameVerseBuilder": "Verse Builder",
+  "gameVerseBuilderDesc": "Rebuild the verse word by word.",
+  "questionOf": "Question {current} of {total}",
+  "@questionOf": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "verseOf": "Verse {current} of {total}",
+  "@verseOf": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "correctAnswer": "Correct!",
+  "wrongAnswer": "Not quite — the answer is highlighted.",
+  "nextQuestion": "Next",
+  "finishGame": "Finish",
+  "playAgain": "Play Again",
+  "yourScore": "Your score",
+  "bestScoreLabel": "Best: {score}",
+  "@bestScoreLabel": {
+    "placeholders": {
+      "score": {
+        "type": "int"
+      }
+    }
+  },
+  "scrambleMistakes": "{count} wrong taps",
+  "@scrambleMistakes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gamePerfect": "Perfect!",
+  "gameWellDone": "Well done!",
+  "gameKeepPracticing": "Keep practicing — the Word is worth it."
+}
